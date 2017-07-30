@@ -26,6 +26,8 @@ Title and year data is consistent across two data sets and can be used for initi
 pip install fuzzywuzzy
 pip install fuzzywuzzy[speedup]
 
+To run program:
+spark-submit entity_resolution.py
 ```
 ## Author
 
