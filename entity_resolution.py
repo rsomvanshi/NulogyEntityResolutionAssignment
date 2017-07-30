@@ -1,3 +1,9 @@
+'''
+@author : rsomvanshi
+
+Nulogy assignment on Entity resolution
+
+'''
 from pyspark.sql import SparkSession
 from fuzzywuzzy import fuzz
 from pyspark.sql.types import IntegerType
@@ -11,17 +17,23 @@ dblp_df = spark.read.format("csv").option("header", "true").load("DBLP1.csv")
 # Load Scholar.csv data into dataframe
 scholar_df = spark.read.format("csv").option("header", "true").load("Scholar.csv")
 
-
+# Fuzzy search: Using token_set_ratio since it seems to be covering most of the cases. (out-of-order, missing tokens)
 def fuzzy_ratio(col1, col2):
     res = fuzz.token_set_ratio(col1, col2)
     return res
 
-fuzz_udf = udf(fuzzy_ratio,IntegerType())
+# Defined UDF : Gets two columns and calculates fuzzy search score
+fuzz_udf = udf(fuzzy_ratio, IntegerType())
 
+# Filtering some data with inner join to avoid cross join on entire data set.
+# Assumption is made here: Title and year across two datasets is mostly consistent
+# Resolution is done on "author" data
 cond = [dblp_df.title == scholar_df.title, dblp_df.year == scholar_df.year]
 joined_fuzzy_df = dblp_df.join(scholar_df, cond).withColumn("fuzzy_ratio",fuzz_udf(dblp_df["authors"],
                                                                                    scholar_df["authors"]))
 
+# Get entity resolution with fuzzy search score of 80 or more.
+#NOTE: Increasing this number will filter more entities giving more refined output.
 results = joined_fuzzy_df.filter(joined_fuzzy_df.fuzzy_ratio > 80).collect()
 
 #results.show(5,truncate=True)
